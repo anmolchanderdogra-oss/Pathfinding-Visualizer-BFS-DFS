@@ -1,0 +1,116 @@
+import tkinter as tk
+from queue import Queue
+import time
+
+ROWS, COLS = 20, 40
+CELL_SIZE = 25
+start = (0, 0)
+end = (19, 39)
+walls = set()
+running = False
+
+root = tk.Tk()
+root.title("Pathfinding Visualizer - BFS & DFS")
+canvas = tk.Canvas(root, width=COLS * CELL_SIZE, height=ROWS * CELL_SIZE, bg="white")
+canvas.pack()
+
+def draw_grid():
+    for i in range(ROWS):
+        for j in range(COLS):
+            color = "white"
+            if (i, j) == start:
+                color = "green"
+            elif (i, j) == end:
+                color = "red"
+            elif (i, j) in walls:
+                color = "black"
+            canvas.create_rectangle(j*CELL_SIZE, i*CELL_SIZE, (j+1)*CELL_SIZE, (i+1)*CELL_SIZE, fill=color, outline="gray")
+
+def draw_cell(pos, color):
+    r, c = pos
+    canvas.create_rectangle(c*CELL_SIZE, r*CELL_SIZE, (c+1)*CELL_SIZE, (r+1)*CELL_SIZE, fill=color, outline="gray")
+
+def get_neighbors(row, col):
+    for dr, dc in [(-1,0), (1,0), (0,-1), (0,1)]:
+        r, c = row + dr, col + dc
+        if 0 <= r < ROWS and 0 <= c < COLS and (r, c) not in walls:
+            yield r, c
+
+def bfs():
+    global running
+    running = True
+    visited = set()
+    parent = {}
+    q = Queue()
+    q.put(start)
+    visited.add(start)
+
+    while not q.empty() and running:
+        node = q.get()
+        if node == end:
+            break
+        for neighbor in get_neighbors(*node):
+            if neighbor not in visited:
+                parent[neighbor] = node
+                visited.add(neighbor)
+                q.put(neighbor)
+                draw_cell(neighbor, "lightblue")
+                root.update()
+                time.sleep(0.02)
+
+    trace_path(parent)
+
+def dfs():
+    global running
+    running = True
+    visited = set()
+    parent = {}
+
+    def dfs_recursive(node):
+        if not running:
+            return
+        if node == end:
+            return True
+        visited.add(node)
+        draw_cell(node, "lightblue")
+        root.update()
+        time.sleep(0.02)
+        for neighbor in get_neighbors(*node):
+            if neighbor not in visited:
+                parent[neighbor] = node
+                if dfs_recursive(neighbor):
+                    return True
+        return False
+
+    dfs_recursive(start)
+    trace_path(parent)
+
+def trace_path(parent):
+    node = end
+    while node in parent:
+        draw_cell(node, "yellow")
+        node = parent[node]
+        root.update()
+        time.sleep(0.03)
+
+def add_wall(event):
+    r, c = event.y // CELL_SIZE, event.x // CELL_SIZE
+    if (r, c) != start and (r, c) != end:
+        walls.add((r, c))
+        draw_cell((r, c), "black")
+
+def reset_grid():
+    global walls, running
+    walls = set()
+    running = False
+    draw_grid()
+
+frame = tk.Frame(root)
+frame.pack()
+tk.Button(frame, text="Start BFS", command=bfs, bg="green", fg="white").pack(side=tk.LEFT, padx=10)
+tk.Button(frame, text="Start DFS", command=dfs, bg="blue", fg="white").pack(side=tk.LEFT, padx=10)
+tk.Button(frame, text="Reset", command=reset_grid, bg="gray", fg="white").pack(side=tk.LEFT, padx=10)
+
+canvas.bind("<Button-1>", add_wall)
+draw_grid()
+root.mainloop()
